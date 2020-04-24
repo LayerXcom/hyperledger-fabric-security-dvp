@@ -1,0 +1,237 @@
+version: '3'
+
+services:
+  orderer:
+    image: hyperledger/fabric-orderer
+    volumes:
+      - ./docker-bin:${DOCKER_BIN_PATH}
+      - ./scripts/organization:/scripts
+      - ./scripts/utils/install_jq.sh:/scripts/install_jq.sh
+      - ./nodes/orderer:${FABRIC_CFG_PATH}
+      - ./configs/orderer/orderer.yaml:${FABRIC_CFG_PATH}/orderer.yaml
+      - ./configs/orderer/configtx.yaml:${FABRIC_CFG_PATH}/configtx.yaml
+      - ./configs/minatobank/configtx.yaml:${FABRIC_CFG_PATH}/minatobank/configtx.yaml
+      - ./configs/kitabank/configtx.yaml:${FABRIC_CFG_PATH}/kitabank/configtx.yaml
+    environment:
+      - CORE_PEER_LOCALMSPID=${ORDERER_MSPID}
+      - CORE_PEER_MSPCONFIGPATH=${ORDERER_MSP_CONFIG_PATH}
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC}
+      - FABRIC_CFG_PATH=${FABRIC_CFG_PATH}
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISPROFILE=OrdererGenesis
+      - ORDERER_GENERAL_GENESISFILE=genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=orderer
+      - ORDERER_GENERAL_LOCALMSPDIR=${ORDERER_MSP_CONFIG_PATH}
+    ports:
+      - ${ORDERER_PORT}:${ORDERER_PORT}
+    networks:
+      - ${NETWORK}
+
+  orderer-ca:
+    image: hyperledger/fabric-ca
+    environment: 
+      - FABRIC_CA_SERVER_CA_NAME=${ORDERER_CA}
+    volumes:
+      - ./nodes/{ORDERER_CA}:/etc/hyperledger/fabric-ca-server
+    ports:
+      - ${ORDERER_CA_PORT}:${PLATFORM_CA_PORT}
+    networks:
+      - ${NETWORK}
+    command: sh -c 'fabric-ca-server start -b ${ADMIN_ID}:${ADMIN_PASSWORD} --port ${ORDERER_CA_PORT}'
+
+  platform-ca:
+    image: hyperledger/fabric-ca
+    environment: 
+      - FABRIC_CA_SERVER_CA_NAME=${PLATFORM_CA}
+    volumes:
+      - ./nodes/${PLATFORM_CA}:/etc/hyperledger/fabric-ca-server
+    ports:
+      - ${PLATFORM_CA_PORT}:${PLATFORM_CA_PORT}
+    networks:
+      - ${NETWORK}
+    command: sh -c 'fabric-ca-server start -b ${ADMIN_ID}:${ADMIN_PASSWORD}'
+
+  platform-peer1:
+    image: hyperledger/fabric-peer
+    volumes:
+      - ./docker-bin:${DOCKER_BIN_PATH}
+      - ./nodes/${PLATFORM_PEER}:${FABRIC_CFG_PATH}
+      - ./configs/${PLATFORM_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/configtx.yaml
+      - /var/run/:/host/var/run/
+      - ./configs/${MINATOBANK_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/${MINATOBANK_MSPID}/configtx.yaml
+      - ./configs/${KITABANK_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/${KITABANK_MSPID}/configtx.yaml
+      - ./scripts/identity/add_identity.sh:/scripts/add_identity.sh
+      - ./scripts/organization:/scripts
+      - ./scripts/utils/install_jq.sh:/scripts/install_jq.sh
+      - ./scripts/channel/update_anchor_peer.sh:/scripts/update_anchor_peer.sh
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC}
+      - FABRIC_CFG_PATH=${FABRIC_CFG_PATH}
+      - CORE_PEER_ID=${PLATFORM_PEER}
+      - CORE_PEER_LOCALMSPID=${PLATFORM_MSPID}
+      - CORE_PEER_MSPCONFIGPATH=${PLATFORM_MSP_CONFIG_PATH}
+      - CORE_PEER_ADDRESS=${PLATFORM_PEER}:${PLATFORM_PEER_PORT}
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:${PLATFORM_PEER_PORT}
+      - CORE_PEER_CHAINCODEADDRESS=${PLATFORM_PEER}:${PLATFORM_PEER_CHAINCODE_PORT}
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:${PLATFORM_PEER_CHAINCODE_PORT}
+      - CORE_PEER_GOSSIP_BOOTSTRAP=${PLATFORM_PEER}:${PLATFORM_PEER_PORT}
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=${PLATFORM_PEER}:${PLATFORM_PEER_PORT}
+      - CORE_CHAINCODE_LOGGING_LEVEL=${FABRIC_LOGGING_SPEC}
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_${NETWORK}
+      - CORE_LEDGER_STATE_STATEDATABASE=${STATE_DB}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=${PLATFORM_COUCHDB}:${COUCHDB_PORT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_ACCOUNT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+      - ${PLATFORM_PEER_PORT}:${PLATFORM_PEER_PORT}
+    networks:
+      - ${NETWORK}
+    depends_on:
+      - ${PLATFORM_COUCHDB}
+
+  platform-couchdb:
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=${COUCHDB_ACCOUNT}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+      - ${COUCHDB_PORT}:${COUCHDB_PORT}
+    networks:
+      - ${NETWORK}
+
+  kitabank-ca:
+    image: hyperledger/fabric-ca
+    environment: 
+      - FABRIC_CA_SERVER_CA_NAME=${KITABANK_CA}
+    volumes:
+      - ./nodes/${KITABANK_CA}:/etc/hyperledger/fabric-ca-server
+    ports:
+      - ${KITABANK_CA_PORT}:${KITABANK_CA_PORT}
+    networks:
+      - ${NETWORK}
+    command: sh -c 'fabric-ca-server start -b ${ADMIN_ID}:${ADMIN_PASSWORD} --port ${KITABANK_CA_PORT}'
+
+  kitabank-peer1:
+    image: hyperledger/fabric-peer
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./docker-bin:/docker-bin
+      - ./nodes/${KITABANK_PEER}:${FABRIC_CFG_PATH}
+      - ./configs/${KITABANK_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/configtx.yaml
+      - ./scripts/identity/add_identity.sh:/scripts/add_identity.sh
+      - ./scripts/channel/join_channel.sh:/scripts/join_channel.sh
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC}
+      - FABRIC_CFG_PATH=${FABRIC_CFG_PATH}
+      - CORE_PEER_ID=${KITABANK_PEER}
+      - CORE_PEER_LOCALMSPID=${KITABANK_MSPID}
+      - CORE_PEER_MSPCONFIGPATH=${KITABANK_MSP_CONFIG_PATH}
+      - CORE_PEER_ADDRESS=${KITABANK_PEER}:${KITABANK_PEER_PORT}
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:${KITABANK_PEER_PORT}
+      - CORE_PEER_CHAINCODEADDRESS=${KITABANK_PEER}:${KITABANK_PEER_CHAINCODE_PORT}
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:${KITABANK_PEER_CHAINCODE_PORT}
+      - CORE_PEER_GOSSIP_BOOTSTRAP=${KITABANK_PEER}:${KITABANK_PEER_PORT}
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=${KITABANK_PEER}:${KITABANK_PEER_PORT}
+      - CORE_CHAINCODE_LOGGING_LEVEL=${FABRIC_LOGGING_SPEC}
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_${NETWORK}
+      - CORE_LEDGER_STATE_STATEDATABASE=${STATE_DB}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=${KITABANK_COUCHDB}:${COUCHDB_PORT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_ACCOUNT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+        - ${KITABANK_PEER_PORT}:${KITABANK_PEER_PORT}
+    networks:
+      - ${NETWORK}
+    depends_on:
+      - ${KITABANK_COUCHDB}
+
+  kitabank-couchdb:
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=${COUCHDB_ACCOUNT}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+      - ${KITABANK_COUCHDB_PORT}:${COUCHDB_PORT}
+    networks:
+      - ${NETWORK}
+  
+  cc-builder:
+    image: hyperledger/fabric-tools
+    volumes:
+      - ./nodes/cc-builder:/etc/hyperledger/fabric
+      - ./configs/${PLATFORM_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/configtx.yaml
+      # - ${GOPATH}:/opt/gopath/
+      - ./chaincodes/:/opt/gopath/src/matilda/chaincodes
+      - ./configs/collection/:/opt/gopath/src/private_config
+
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC}
+      - FABRIC_CFG_PATH=${FABRIC_CFG_PATH}
+      - CORE_PEER_LOCALMSPID=${PLATFORM_MSPID}
+      - CORE_PEER_MSPCONFIGPATH=${PLATFORM_MSP_CONFIG_PATH}
+      - CORE_PEER_ADDRESS=${PLATFORM_PEER}:${PLATFORM_PEER_PORT}
+    networks:
+      - ${NETWORK}
+
+  minatobank-ca:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_SERVER_CA_NAME=${MINATOBANK_CA}
+    volumes:
+      - ./nodes/${MINATOBANK_CA}:/etc/hyperledger/fabric-ca-server
+    ports:
+      - ${MINATOBANK_CA_PORT}:${MINATOBANK_CA_PORT}
+    networks:
+      - ${NETWORK}
+    command: sh -c 'fabric-ca-server start -b ${ADMIN_ID}:${ADMIN_PASSWORD} --port ${MINATOBANK_CA_PORT}'
+
+  minatobank-peer1:
+    image: hyperledger/fabric-peer
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./docker-bin:/docker-bin
+      - ./nodes/${MINATOBANK_PEER}:${FABRIC_CFG_PATH}
+      - ./configs/${MINATOBANK_MSPID}/configtx.yaml:${FABRIC_CFG_PATH}/configtx.yaml
+      - ./scripts/identity/add_identity.sh:/scripts/add_identity.sh
+      - ./scripts/channel/join_channel.sh:/scripts/join_channel.sh
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC}
+      - FABRIC_CFG_PATH=${FABRIC_CFG_PATH}
+      - CORE_PEER_ID=${MINATOBANK_PEER}
+      - CORE_PEER_LOCALMSPID=${MINATOBANK_MSPID}
+      - CORE_PEER_MSPCONFIGPATH=${MINATOBANK_MSP_CONFIG_PATH}
+      - CORE_PEER_ADDRESS=${MINATOBANK_PEER}:${MINATOBANK_PEER_PORT}
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:${MINATOBANK_PEER_PORT}
+      - CORE_PEER_CHAINCODEADDRESS=${MINATOBANK_PEER}:${MINATOBANK_PEER_CHAINCODE_PORT}
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:${MINATOBANK_PEER_CHAINCODE_PORT}
+      - CORE_PEER_GOSSIP_BOOTSTRAP=${MINATOBANK_PEER}:${MINATOBANK_PEER_PORT}
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=${MINATOBANK_PEER}:${MINATOBANK_PEER_PORT}
+      - CORE_CHAINCODE_LOGGING_LEVEL=${FABRIC_LOGGING_SPEC}
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_${NETWORK}
+      - CORE_LEDGER_STATE_STATEDATABASE=${STATE_DB}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=${MINATOBANK_COUCHDB}:${COUCHDB_PORT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_ACCOUNT}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+        - ${MINATOBANK_PEER_PORT}:${MINATOBANK_PEER_PORT}
+    networks:
+      - ${NETWORK}
+    depends_on:
+      - ${MINATOBANK_COUCHDB}
+
+  minatobank-couchdb:
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=${COUCHDB_ACCOUNT}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+      - ${MINATOBANK_COUCHDB_PORT}:${COUCHDB_PORT}
+    networks:
+      - ${NETWORK}
+
+networks:
+  dev:

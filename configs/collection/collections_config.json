@@ -1,0 +1,42 @@
+[
+  {
+    "name": "MinatoBankSecurityBalance",
+    "policy": "OR('platform.member', 'minatobank.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true
+  },
+  {
+    "name": "KitaBankSecurityBalance",
+    "policy": "OR('platform.member', 'kitabank.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true
+   },
+   {
+    "name": "PlatformMoneyBalance",
+    "policy": "OR('platform.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true
+  },
+  {
+    "name": "MinatoBankMoneyBalance",
+    "policy": "OR('platform.member', 'minatobank.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true
+  },
+  {
+    "name": "KitaBankMoneyBalance",
+    "policy": "OR('platform.member', 'kitabank.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true
+  }
+ ]

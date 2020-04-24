@@ -1,0 +1,110 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+Organizations:
+  - &KitaBankOrg
+    Name: kitabank
+    ID: kitabank
+    MSPDir: mspdir/kitabank/msp
+    AnchorPeers:
+      - Host: kitabank-peer1
+        Port: 7071
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('kitabank.admin', 'kitabank.peer', 'kitabank.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('kitabank.admin', 'kitabank.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('kitabank.admin')"
+
+Orderer: &OrdererDefaults
+  OrdererType: solo
+  Addresses:
+    - orderer:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+
+Capabilities:
+  # Channel capabilities apply to both the orderers and the peers and must be
+  # supported by both.
+  # Set the value of the capability to true to require it.
+  Channel: &ChannelCapabilities
+    # V1.4.3 for Channel is a catchall flag for behavior which has been
+    # determined to be desired for all orderers and peers running at the v1.4.3
+    # level, but which would be incompatible with orderers and peers from
+    # prior releases.
+    # Prior to enabling V1.4.3 channel capabilities, ensure that all
+    # orderers and peers on a channel are at v1.4.3 or later.
+    V1_4_2: true
+    V1_3: false
+    V1_2: false
+  # Orderer capabilities apply only to the orderers, and may be safely
+  # used with prior release peers.
+  # Set the value of the capability to true to require it.
+  Orderer: &OrdererCapabilities
+    # V1.4.2 for Orderer is a catchall flag for behavior which has been
+    # determined to be desired for all orderers running at the v1.4.2
+    # level, but which would be incompatible with orderers from prior releases.
+    # Prior to enabling V1.4.2 orderer capabilities, ensure that all
+    # orderers on a channel are at v1.4.2 or later.
+    V1_4_2: true
+    V1_3: false
+    V1_2: false
+  # Application capabilities apply only to the peer network, and may be safely
+  # used with prior release orderers.
+  # Set the value of the capability to true to require it.
+  Application: &ApplicationCapabilities
+    # V1.4.2 for Application enables the new non-backwards compatible
+    # features and fixes of fabric v1.4.2.
+    V1_4_2: true
+    V1_3: false
+    V1_2: false
+
+Channel: &ChannelDefaults
+  # Policies defines the set of policies at this level of the config tree
+  # For Channel policies, their canonical path is
+  #   /Channel/<PolicyName>
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: Signature
+      Rule: "OR('orderer.admin')"
+  # Capabilities describes the channel level capabilities, see the
+  # dedicated Capabilities section elsewhere in this file for a full
+  # description
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  all-ch:
+    Consortium: Matilda
+    Application:
+      Organizations:
+        - *KitaBankOrg
+      Policies:
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Readers"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Writers"
+        Admins:
+          Type: Signature
+          Rule: "OR('platform.admin')"
+      Capabilities:
+        <<: *ApplicationCapabilities

@@ -1,0 +1,7 @@
+# Dependency directories (remove the comment below to include it)
+nodes/
+docker-bin/
+scripts/organization/install_jq.sh
+scripts/organization/add_identity.sh
+scripts/organization/update_anchor_peer.sh
+.env
