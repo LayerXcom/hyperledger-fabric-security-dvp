@@ -1,7 +1,7 @@
-# Hyperledeger Fablicによる証券発行のDvP決済実装
+# Hyperledger Fabricによる証券発行のDvP決済実装
 
 ## 概要
-本リポジトリはHyperledeger Fabricを用いて証券発行のDvP決済を実装したものです。  
+本リポジトリはHyperledger Fabricを用いて証券発行のDvP決済を実装したものです。  
 証券(Security)と資金(Money)のDvP決済を行えるプラットフォームを想定して作成しています。  
 証券発行のDvP決済に必要な組織(Organization)やネットワーク設定、Chaincodeが含まれています。  
 Dockerがインストールされている環境であれば簡単にネットワーク構築が行え、証券発行のDvP決済のChaincodeの動作確認・アレンジも可能です。  
