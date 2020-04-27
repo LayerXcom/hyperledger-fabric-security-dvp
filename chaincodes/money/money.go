@@ -42,6 +42,7 @@ type GetMoneyBalance struct {
 	Identity     string `json:"identity"`     //アイデンティティ
 }
 
+const NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT = 0
 const NUMBER_OF_ARGUMENTS = 1
 const MONEY_BALANCE = "moneyBalance"
 
@@ -75,21 +76,54 @@ func (mc *MoneyChaincode) Invoke(apiStub shim.ChaincodeStubInterface) sc.Respons
 // DBでは key:moneyBalance-{組織ID}-{投資家ID}, value:残高
 // 例） key:moneyBalance-MinatoBank-investor01, value:200
 func (mc *MoneyChaincode) mintMoney(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
-	if len(args) != NUMBER_OF_ARGUMENTS {
-		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+
+	transMap, err := apiStub.GetTransient()
+
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["mintMoney"]; !ok {
+		return shim.Error("mintMoney must be a key in the transient map")
+	}
+
+	if len(transMap["mintMoney"]) == 0 {
+		return shim.Error("mintMoney value in the transient map must be a non-empty JSON string")
 	}
 
 	var mintMoney MintMoney
-	var mintInfo string = args[0]
-	err := json.Unmarshal([]byte(mintInfo), &mintMoney)
+	err = json.Unmarshal(transMap["mintMoney"], &mintMoney)
 	if err != nil {
-		return shim.Error("Failed unmarshal1: " + err.Error())
+		return shim.Error("Failed to Unmarshal: " + string(transMap["mintMoney"]))
 	}
 
-	balanceAsBytes := []byte(strconv.FormatUint(mintMoney.Amount, 10))
-
+	var balance uint64
 	var key string = fmt.Sprintf("%s-%s-%s", MONEY_BALANCE, mintMoney.Organization, mintMoney.Identity)
 	var collectionName string = fmt.Sprintf("%sMoneyBalance", mintMoney.Organization)
+	balanceAsBytes, err := apiStub.GetPrivateData(collectionName, key)
+	if err != nil {
+		return shim.Error("Failed GetPrivateData balance: " + err.Error())
+	}
+
+	if len(balanceAsBytes) == 0 {
+		k := fmt.Sprintf("%s-%s-%s", MONEY_BALANCE, mintMoney.Organization, mintMoney.Identity)
+		err = apiStub.PutPrivateData(collectionName, k, []byte("0"))
+		if err != nil {
+			return shim.Error("Failed PutPrivateData balance: " + err.Error())
+		}
+		balanceAsBytes = []byte("0")
+	}
+
+	err = json.Unmarshal(balanceAsBytes, &balance)
+	if err != nil {
+		return shim.Error("Failed unmarshal balanceAsBytes: " + err.Error())
+	}
+	balance += mintMoney.Amount
+
+	balanceAsBytes = []byte(strconv.FormatUint(balance, 10))
 	err = apiStub.PutPrivateData(collectionName, key, balanceAsBytes)
 	if err != nil {
 		return shim.Error("Failed PutPrivateData balance: " + err.Error())
@@ -101,13 +135,26 @@ func (mc *MoneyChaincode) mintMoney(apiStub shim.ChaincodeStubInterface, args []
 // 誰から誰にいくらmintする
 // 引数: {"amount":"100","senderOrganization":"MinatoBank","senderIdentity":"investor01","receiverOrganization":"MinatoBank","receiverIdentity":"investor01"}
 func (mc *MoneyChaincode) transferMoney(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
-	if len(args) != NUMBER_OF_ARGUMENTS {
-		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+
+	transMap, err := apiStub.GetTransient()
+
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["transferMoney"]; !ok {
+		return shim.Error("transferMoney must be a key in the transient map")
+	}
+
+	if len(transMap["transferMoney"]) == 0 {
+		return shim.Error("mintMoney value in the transient map must be a non-empty JSON string")
 	}
 
 	var transferMoney TransferMoney
-	var transferInfo string = args[0]
-	err := json.Unmarshal([]byte(transferInfo), &transferMoney)
+	err = json.Unmarshal(transMap["transferMoney"], &transferMoney)
 	if err != nil {
 		return shim.Error("Failed unmarshal transferInfo: " + err.Error())
 	}
@@ -164,6 +211,7 @@ func (mc *MoneyChaincode) transferMoney(apiStub shim.ChaincodeStubInterface, arg
 	return shim.Success(nil)
 }
 
+// TODO can only be called from securityManager
 func (mc *MoneyChaincode) updateMoney(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
 	if len(args) != NUMBER_OF_ARGUMENTS {
 		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
@@ -208,16 +256,26 @@ func (mc *MoneyChaincode) updateMoney(apiStub shim.ChaincodeStubInterface, args 
 // 誰の残高を取得する
 // 引数: {"organization":"MinatoBank","identity":"investor01"}
 func (mc *MoneyChaincode) getBalance(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+	transMap, err := apiStub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
 
-	if len(args) != NUMBER_OF_ARGUMENTS {
-		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
+	if _, ok := transMap["getMoneyBalance"]; !ok {
+		return shim.Error("getMoneyBalance must be a key in the transient map")
+	}
+
+	if len(transMap["getMoneyBalance"]) == 0 {
+		return shim.Error("getMoneyBalance value in the transient map must be a non-empty JSON string")
 	}
 
 	var getMoneyBalance GetMoneyBalance
-	var queryInfo string = args[0]
-	err := json.Unmarshal([]byte(queryInfo), &getMoneyBalance)
+	err = json.Unmarshal(transMap["getMoneyBalance"], &getMoneyBalance)
 	if err != nil {
-		return shim.Error("Failed unmarshal queryInfo: " + err.Error())
+		return shim.Error("Failed to Unmarshal: " + string(transMap["getMoneyBalance"]))
 	}
 	// Moneyの情報取得
 	var key string = fmt.Sprintf("%s-%s-%s", MONEY_BALANCE, getMoneyBalance.Organization, getMoneyBalance.Identity)
