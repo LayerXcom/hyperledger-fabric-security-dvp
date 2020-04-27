@@ -71,8 +71,8 @@ Quick Startに進めてもらっても構いません)。
 
 #### 1. 本プロジェクトのリポジトリをgit clone
 ```
-$ git clone https://github.com/LayerXcom/matilda.git
-$ cd matilda
+$ git clone https://github.com/LayerXcom/hyperledger-fabric-security-dvp.git
+$ cd hyperledger-fabric-security-dvp
 ```
 
 #### 2. Docker Imageをダウンロード
