@@ -150,7 +150,7 @@ func (mc *MoneyChaincode) transferMoney(apiStub shim.ChaincodeStubInterface, arg
 	}
 
 	if len(transMap["transferMoney"]) == 0 {
-		return shim.Error("mintMoney value in the transient map must be a non-empty JSON string")
+		return shim.Error("transferMoney value in the transient map must be a non-empty JSON string")
 	}
 
 	var transferMoney TransferMoney
