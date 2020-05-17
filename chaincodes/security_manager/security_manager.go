@@ -100,6 +100,7 @@ type GetSecurityBalance struct {
 	Identity     string `json:"identity"`     //アイデンティティ
 }
 
+const NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT = 0
 const NUMBER_OF_ARGUMENTS = 1
 
 // Init ...
@@ -198,8 +199,21 @@ func (sm *SecurityManagerChaincode) finalizeSecurity(apiStub shim.ChaincodeStubI
 
 // issueSecurity ...
 func (sm *SecurityManagerChaincode) issueSecurity(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+
+	transMap, err := apiStub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["issueSecurity"]; !ok {
+		return shim.Error("issueSecurity must be a key in the transient map")
+	}
+
+	if len(transMap["issueSecurity"]) == 0 {
+		return shim.Error("issueSecurity value in the transient map must be a non-empty JSON string")
 	}
 
 	// 実行者がplatformかどうかを確認
@@ -213,9 +227,9 @@ func (sm *SecurityManagerChaincode) issueSecurity(apiStub shim.ChaincodeStubInte
 	}
 
 	issueSecurityRequest := RequestIssueSecurity{}
-	invokeArgs := args[0]
-	if err := json.Unmarshal([]byte(invokeArgs), &issueSecurityRequest); err != nil {
-		return shim.Error("Failed unmarshal: " + err.Error())
+	err = json.Unmarshal(transMap["issueSecurity"], &issueSecurityRequest)
+	if err != nil {
+		return shim.Error("Failed to Unmarshal: " + string(transMap["issueSecurity"]))
 	}
 
 	securityID := generateSecurityKey(SECURITY_KEY, issueSecurityRequest.SecurityID)
@@ -290,7 +304,7 @@ func (sm *SecurityManagerChaincode) issueSecurity(apiStub shim.ChaincodeStubInte
 
 		// mintSecurity
 		mintSecurity := MintSecurity{
-			SecurityID:   securityID,// issueSecurityRequest.SecurityID,
+			SecurityID:   securityID, // issueSecurityRequest.SecurityID,
 			Amount:       purchaseReservation.Units,
 			Organization: investorOrganization,
 			Identity:     investorIdentity,
@@ -359,18 +373,31 @@ func (sm *SecurityManagerChaincode) mintSecurity(apiStub shim.ChaincodeStubInter
 	return balanceAsBytes, nil
 }
 
+// TODO　内部からのみ呼び出し可能にする
 // 誰から誰にいくらmintする
 // 引数: {"amount":"100","senderOrganization":"MinatoBank","senderIdentity":"investor01","receiverOrganization":"MinatoBank","receiverIdentity":"investor01"}
 func (sm *SecurityManagerChaincode) transferSecurity(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
-	if len(args) != NUMBER_OF_ARGUMENTS {
-		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+
+	transMap, err := apiStub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["transferSecurity"]; !ok {
+		return shim.Error("transferSecurity must be a key in the transient map")
+	}
+
+	if len(transMap["transferSecurity"]) == 0 {
+		return shim.Error("transferSecurity value in the transient map must be a non-empty JSON string")
 	}
 
 	var transferSecurity RequestTransferSecurity
-	var transferInfo string = args[0]
-	err := json.Unmarshal([]byte(transferInfo), &transferSecurity)
+	err = json.Unmarshal(transMap["transferSecurity"], &transferSecurity)
 	if err != nil {
-		return shim.Error("Failed unmarshal transferInfo: " + err.Error())
+		return shim.Error("Failed to Unmarshal: " + string(transMap["transferSecurity"]))
 	}
 
 	// senderの残高を減らす
@@ -430,15 +457,27 @@ func (sm *SecurityManagerChaincode) transferSecurity(apiStub shim.ChaincodeStubI
 }
 
 func (sm *SecurityManagerChaincode) getBalance(apiStub shim.ChaincodeStubInterface, args []string) sc.Response {
-	if len(args) != NUMBER_OF_ARGUMENTS {
-		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS))
+	if len(args) != NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT {
+		return shim.Error("Incorrect number of arguments. Expecting " + strconv.Itoa(NUMBER_OF_ARGUMENTS_SETTING_TRANSIENT))
+	}
+
+	transMap, err := apiStub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["getSecurityBalance"]; !ok {
+		return shim.Error("getSecurityBalance must be a key in the transient map")
+	}
+
+	if len(transMap["getSecurityBalance"]) == 0 {
+		return shim.Error("getSecurityBalance value in the transient map must be a non-empty JSON string")
 	}
 
 	var getSecurityBalance GetSecurityBalance
-	var queryInfo string = args[0]
-	err := json.Unmarshal([]byte(queryInfo), &getSecurityBalance)
+	err = json.Unmarshal(transMap["getSecurityBalance"], &getSecurityBalance)
 	if err != nil {
-		return shim.Error("Failed unmarshal queryInfo: " + err.Error())
+		return shim.Error("Failed to Unmarshal: " + string(transMap["getSecurityBalance"]))
 	}
 
 	// Securityの情報取得

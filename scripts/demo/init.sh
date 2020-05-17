@@ -36,23 +36,27 @@ docker-compose run --rm \
 echo
 echo "=========== layerx(0) =========== "
 # layerx(platform)
+export MINT_MONEY_INFO=$(echo -n "{\"amount\":\"0\",\"organization\":\"Platform\",\"identity\":\"layerx\"}" | base64 | tr -d \\n)
 docker-compose run --rm \
-    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney", "{\"amount\":\"0\",\"organization\":\"Platform\",\"identity\":\"layerx\"}"]}'
+    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney"]}' --transient "{\"mintMoney\":\"$MINT_MONEY_INFO\"}"
 
 echo
 echo "=========== investor01の口座初期設定(100000000000) =========== "
 # investor01(MINATOBANK)
+export MINT_MONEY_INFO=$(echo -n "{\"amount\":\"100000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor01\"}" | base64 | tr -d \\n)
 docker-compose run --rm \
-    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney", "{\"amount\":\"100000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor01\"}"]}'
+    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney"]}' --transient "{\"mintMoney\":\"$MINT_MONEY_INFO\"}"
 
 echo
 echo "=========== investor02の口座初期設定(100000000000) =========== "
 # investor02(MINATOBANK)
+export MINT_MONEY_INFO=$(echo -n "{\"amount\":\"100000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor02\"}" | base64 | tr -d \\n)
 docker-compose run --rm \
-    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney", "{\"amount\":\"100000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor02\"}"]}'
+    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney"]}' --transient "{\"mintMoney\":\"$MINT_MONEY_INFO\"}"
 
 echo
 echo "=========== investor03の口座初期設定(200000000000) =========== "
 # investor03(MINATOBANK)
+export MINT_MONEY_INFO=$(echo -n "{\"amount\":\"200000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor03\"}" | base64 | tr -d \\n)
 docker-compose run --rm \
-    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney", "{\"amount\":\"200000000000\",\"organization\":\"MinatoBank\",\"identity\":\"investor03\"}"]}'
+    cc-builder peer chaincode invoke -C $CH -n $CC_MONEY -c '{"Args":["mintMoney"]}' --transient "{\"mintMoney\":\"$MINT_MONEY_INFO\"}"
